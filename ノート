@@ -1,0 +1,89 @@
+import os
+import random
+import requests
+from google import genai
+
+# 売れやすいテーマのリスト
+TOPICS = [
+    "AIを活用して毎日の情報収集を5分に短縮する実践テクニック",
+    "スマホ1台で完結する隙間時間のタスク管理・整理術",
+    "初心者向け：Gemini APIを活用した日常業務の効率化アイデア",
+    "読まれるnote記事を作るための基本構成とタイトル作成法",
+]
+
+def generate_article():
+    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+    topic = random.choice(TOPICS)
+
+    prompt = f"""
+あなたはnoteで好評を得ている有料記事のライターです。
+以下のテーマについて、読者が買いたくなる魅力的な記事を作成してください。
+
+テーマ: {topic}
+
+【執筆ルール】
+1. タイトルはキャッチーで魅力的（30文字以内）。
+2. スマホで読みやすいよう改行や太字を活用する。
+3. 無料部分で興味を惹き、有料部分直前で期待感を高める。
+
+【出力フォーマット】
+# [ここにタイトル]
+
+## はじめに
+（悩みに共感し、この記事で得られるメリットを提示）
+
+## なぜ今これが重要なのか
+（背景や理由の解説）
+
+## 具体的な実践ステップ（一部公開）
+（前半のポイントを解説）
+
+---
+※ここから有料エリア
+---
+
+## 【購入者限定】さらに効果を高める裏技・テンプレート
+（具体的なノウハウやチェックリストを記載）
+
+## まとめ
+（読者の背中を押すメッセージ）
+"""
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+    )
+    return topic, response.text
+
+def send_line_notify(topic, article_text):
+    line_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
+    if not line_token:
+        print("LINE Token is missing")
+        return
+
+    url = "https://api.line.me/v2/bot/message/broadcast"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {line_token}"
+    }
+    
+    preview = article_text[:250] + "\n\n(続きはGitHubを確認してください)"
+    payload = {
+        "messages": [
+            {
+                "type": "text",
+                "text": f"【本日のnote下書きが完成しました】\n\nテーマ: {topic}\n\n{preview}"
+            }
+        ]
+    }
+    requests.post(url, headers=headers, json=payload)
+
+if __name__ == "__main__":
+    topic, article = generate_article()
+    
+    filename = "latest_note_draft.md"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(article)
+    
+    print(f"記事生成完了: {filename}")
+    send_line_notify(topic, article)
