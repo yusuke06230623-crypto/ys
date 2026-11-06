@@ -1,0 +1,36 @@
+name: Daily Note Auto Generator
+
+on:
+  schedule:
+    # 毎日朝7時（日本時間）に自動実行
+    - cron: '0 22 * * *'
+  workflow_dispatch: # 手動実行ボタン
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          pip install google-genai requests
+          
+      - name: Run Script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+        run: python generate_note.py
+
+      - name: Save draft to GitHub
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add latest_note_draft.md
+          git commit -m "Auto-generated note draft" || exit 0
+          git push
