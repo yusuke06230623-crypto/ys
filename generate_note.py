@@ -13,7 +13,7 @@ def generate_daily_note():
     # Geminiにデイリーノートを作成してもらう
     prompt = "今日のデイリーノートを作成してください。今日の振り返りやタスク管理に役立つMarkdown形式の簡潔な文章をお願いします。"
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.8-flash',
         contents=prompt,
     )
     note_content = response.text
